@@ -33,6 +33,14 @@ registerBlockType("pdf-gallery/main", {
       type: "number",
       default: 200,
     },
+    sortBy: {
+      type: "string",
+      default: "filename",
+    },
+    sortDirection: {
+      type: "string",
+      default: "asc",
+    },
   },
 
   edit: function (props) {
@@ -43,10 +51,12 @@ registerBlockType("pdf-gallery/main", {
     });
 
     useEffect(() => {
-      fetch(`/wp-json/pdf-gallery/v1/pdfs?tag=${attributes.tag}`)
+      fetch(
+        `/wp-json/pdf-gallery/v1/pdfs?tag=${attributes.tag}&sort_by=${attributes.sortBy}&sort_direction=${attributes.sortDirection}`
+      )
         .then((response) => response.json())
         .then((data) => setPdfs(data));
-    }, [attributes.tag]);
+    }, [attributes.tag, attributes.sortBy, attributes.sortDirection]);
 
     return (
       <>
@@ -100,6 +110,24 @@ registerBlockType("pdf-gallery/main", {
               min={0}
               max={1000}
               help="Set to 0 for auto height"
+            />
+            <SelectControl
+              label="Sort By"
+              value={attributes.sortBy}
+              options={[
+                { label: "Filename", value: "filename" },
+                { label: "Creation Date", value: "date" },
+              ]}
+              onChange={(sortBy) => setAttributes({ sortBy })}
+            />
+            <SelectControl
+              label="Sort Direction"
+              value={attributes.sortDirection}
+              options={[
+                { label: "Ascending", value: "asc" },
+                { label: "Descending", value: "desc" },
+              ]}
+              onChange={(sortDirection) => setAttributes({ sortDirection })}
             />
           </PanelBody>
         </InspectorControls>

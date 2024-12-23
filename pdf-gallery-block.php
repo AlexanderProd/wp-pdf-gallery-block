@@ -57,12 +57,24 @@ class PDFGalleryBlock {
                     'required' => false,
                     'type' => 'string',
                 ),
+                'sort_by' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'default' => 'filename',
+                ),
+                'sort_direction' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'default' => 'asc',
+                ),
             ),
         ));
     }
 
     public function get_pdfs($request) {
         $tag = $request->get_param('tag');
+        $sort_by = $request->get_param('sort_by');
+        $sort_direction = $request->get_param('sort_direction');
         $pdfs = array();
 
         // Get PDFs from the custom directory
@@ -111,6 +123,19 @@ class PDFGalleryBlock {
             }
         }
 
+        // Sort the PDFs array
+        usort($pdfs, function($a, $b) use ($sort_by, $sort_direction) {
+            $modifier = $sort_direction === 'desc' ? -1 : 1;
+            
+            if ($sort_by === 'date') {
+                $time_a = filectime(get_attached_file(attachment_url_to_postid($a['url'])));
+                $time_b = filectime(get_attached_file(attachment_url_to_postid($b['url'])));
+                return ($time_a - $time_b) * $modifier;
+            } else { // filename
+                return strcmp($a['name'], $b['name']) * $modifier;
+            }
+        });
+
         return $pdfs;
     }
 
@@ -122,7 +147,7 @@ class PDFGalleryBlock {
             try {
                 if (class_exists('Imagick')) {
                     $imagick = new Imagick();
-                    $imagick->setResolution(100, 100); // Lower resolution for better performance
+                    $imagick->setResolution(100, 100);
                     $imagick->readImage($pdf_path . '[0]');
                     $imagick->setImageFormat('jpg');
                     $imagick->setImageBackgroundColor('white');
@@ -143,6 +168,8 @@ class PDFGalleryBlock {
     public function render_block($attributes) {
         $request = new WP_REST_Request('GET', '/pdf-gallery/v1/pdfs');
         $request->set_param('tag', isset($attributes['tag']) ? $attributes['tag'] : '');
+        $request->set_param('sort_by', isset($attributes['sortBy']) ? $attributes['sortBy'] : 'filename');
+        $request->set_param('sort_direction', isset($attributes['sortDirection']) ? $attributes['sortDirection'] : 'asc');
         $pdfs = $this->get_pdfs($request);
         
         $columns = isset($attributes['columns']) ? $attributes['columns'] : 3;
