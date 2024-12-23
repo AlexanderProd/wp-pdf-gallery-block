@@ -42,8 +42,8 @@ registerBlockType("pdf-gallery/main", {
           {pdfs.map((pdf) => (
             <div key={pdf.name} className="pdf-item">
               <a href={pdf.url} target="_blank">
-                <img src={pdf.thumbnail} alt={pdf.name} />
-                <span className="pdf-name">{pdf.name}</span>
+                <img src={pdf.thumbnail} alt={pdf.title} />
+                <span className="pdf-name">{pdf.title}</span>
               </a>
             </div>
           ))}

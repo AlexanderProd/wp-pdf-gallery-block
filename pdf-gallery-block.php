@@ -75,7 +75,8 @@ class PDFGalleryBlock {
                 $pdfs[] = array(
                     'name' => $filename,
                     'url' => $this->upload_dir['baseurl'] . '/' . $this->pdf_dir . '/' . $filename,
-                    'thumbnail' => $thumbnail
+                    'thumbnail' => $thumbnail,
+                    'title' => $filename
                 );
             }
         }
@@ -103,7 +104,8 @@ class PDFGalleryBlock {
                 $pdfs[] = array(
                     'name' => $filename,
                     'url' => wp_get_attachment_url($pdf->ID),
-                    'thumbnail' => $thumbnail
+                    'thumbnail' => $thumbnail,
+                    'title' => get_the_title($pdf->ID)
                 );
             }
         }
@@ -154,8 +156,8 @@ class PDFGalleryBlock {
                 </div>',
                 esc_url($pdf['url']),
                 esc_url($pdf['thumbnail']),
-                esc_attr($pdf['name']),
-                esc_html($pdf['name'])
+                esc_attr($pdf['title']),
+                esc_html($pdf['title'])
             );
         }
 
