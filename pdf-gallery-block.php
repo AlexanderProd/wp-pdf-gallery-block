@@ -50,24 +50,62 @@ class PDFGalleryBlock {
         register_rest_route('pdf-gallery/v1', '/pdfs', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_pdfs'),
-            'permission_callback' => '__return_true'
+            'permission_callback' => '__return_true',
+            'args' => array(
+                'tag' => array(
+                    'required' => false,
+                    'type' => 'string',
+                ),
+            ),
         ));
     }
 
-    public function get_pdfs() {
-        $pdf_path = $this->upload_dir['basedir'] . '/' . $this->pdf_dir;
-        $files = glob($pdf_path . '/*.pdf');
+    public function get_pdfs($request) {
+        $tag = $request->get_param('tag');
         $pdfs = array();
 
+        // Get PDFs from the custom directory
+        $pdf_path = $this->upload_dir['basedir'] . '/' . $this->pdf_dir;
+        $files = glob($pdf_path . '/*.pdf');
+        
         foreach ($files as $file) {
             $filename = basename($file);
-            $thumbnail = $this->generate_thumbnail($file, $filename);
+            if (empty($tag) || stripos($filename, $tag) !== false) {
+                $thumbnail = $this->generate_thumbnail($file, $filename);
+                $pdfs[] = array(
+                    'name' => $filename,
+                    'url' => $this->upload_dir['baseurl'] . '/' . $this->pdf_dir . '/' . $filename,
+                    'thumbnail' => $thumbnail
+                );
+            }
+        }
+
+        // Get PDFs from Media Library
+        $args = array(
+            'post_type' => 'attachment',
+            'post_mime_type' => 'application/pdf',
+            'posts_per_page' => -1,
+            'post_status' => 'inherit',
+        );
+
+        $media_pdfs = get_posts($args);
+
+        foreach ($media_pdfs as $pdf) {
+            $filename = basename(get_attached_file($pdf->ID));
+            $description = $pdf->post_content;
             
-            $pdfs[] = array(
-                'name' => $filename,
-                'url' => $this->upload_dir['baseurl'] . '/' . $this->pdf_dir . '/' . $filename,
-                'thumbnail' => $thumbnail
-            );
+            // Check if tag exists in filename or description
+            if (empty($tag) || 
+                stripos($filename, $tag) !== false || 
+                stripos($description, $tag) !== false) {
+                
+                $thumbnail = $this->generate_thumbnail(get_attached_file($pdf->ID), $filename);
+                $pdfs[] = array(
+                    'name' => $filename,
+                    'url' => wp_get_attachment_url($pdf->ID),
+                    'thumbnail' => $thumbnail
+                );
+            }
         }
 
         return $pdfs;
@@ -100,7 +138,10 @@ class PDFGalleryBlock {
     }
 
     public function render_block($attributes) {
-        $pdfs = $this->get_pdfs();
+        $request = new WP_REST_Request('GET', '/pdf-gallery/v1/pdfs');
+        $request->set_param('tag', isset($attributes['tag']) ? $attributes['tag'] : '');
+        $pdfs = $this->get_pdfs($request);
+        
         $output = '<div class="pdf-gallery-grid">';
 
         foreach ($pdfs as $pdf) {
