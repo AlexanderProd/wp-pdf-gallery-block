@@ -1,4 +1,4 @@
-# PDF Gallery Block - WordPress Plugin Installation Guide
+# PDF Gallery Block - WordPress Plugin
 
 ## Description
 
@@ -43,7 +43,7 @@ wp-content/uploads/pdf-thumbnails/   # For storing generated thumbnails
 4. Set Permissions
    Ensure booth directories have the necessary write permissions in the WordPress upload directory.
 
-```
+```bash
 chmod 755 wp-content/uploads/pdf-gallery
 chmod 755 wp-content/uploads/pdf-thumbnails
 ```
@@ -65,13 +65,13 @@ You can customize the block's appearance and behavior by editing the `style.css`
 
 - Verify ImageMagick is installed:
 
-```
+```php
 <?php echo exec('convert -version'); ?>
 ```
 
 or
 
-```
+```php
 <?php phpinfo(); ?>
 ```
 
@@ -99,7 +99,7 @@ For developers who want to modify the JavaScript code, you'll need to set up the
 1. Install Node.js
 2. Run npm commands
 
-```
+```bash
 npm install
 npm run build
 ```
