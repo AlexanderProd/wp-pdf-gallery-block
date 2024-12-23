@@ -30,7 +30,7 @@ class PDFGalleryBlock {
         wp_register_script(
             'pdf-gallery-block',
             plugins_url('build/index.js', __FILE__),
-            array('wp-blocks', 'wp-element', 'wp-editor')
+            array('wp-blocks', 'wp-element', 'wp-editor', 'wp-components')
         );
 
         wp_register_style(
@@ -42,6 +42,7 @@ class PDFGalleryBlock {
         register_block_type('pdf-gallery/main', array(
             'editor_script' => 'pdf-gallery-block',
             'editor_style' => 'pdf-gallery-block',
+            'style' => 'pdf-gallery-block',
             'render_callback' => array($this, 'render_block')
         ));
     }
@@ -144,19 +145,37 @@ class PDFGalleryBlock {
         $request->set_param('tag', isset($attributes['tag']) ? $attributes['tag'] : '');
         $pdfs = $this->get_pdfs($request);
         
-        $output = '<div class="pdf-gallery-grid">';
+        $columns = isset($attributes['columns']) ? $attributes['columns'] : 3;
+        $image_fit = isset($attributes['imageFit']) ? $attributes['imageFit'] : 'cover';
+        $font_size = isset($attributes['fontSize']) ? $attributes['fontSize'] : 'normal';
+        $image_width = isset($attributes['imageWidth']) ? $attributes['imageWidth'] : 0;
+        $image_height = isset($attributes['imageHeight']) ? $attributes['imageHeight'] : 200;
+        
+        $output = sprintf(
+            '<div class="pdf-gallery-grid columns-%d">',
+            esc_attr($columns)
+        );
 
         foreach ($pdfs as $pdf) {
+            $style = sprintf(
+                'object-fit: %s; %s %s',
+                esc_attr($image_fit),
+                $image_width ? "width: {$image_width}px;" : "width: 100%;",
+                $image_height ? "height: {$image_height}px;" : "height: auto;"
+            );
+
             $output .= sprintf(
                 '<div class="pdf-item">
                     <a href="%s" target="_blank">
-                        <img src="%s" alt="%s">
-                        <span class="pdf-name">%s</span>
+                        <img src="%s" alt="%s" style="%s">
+                        <span class="pdf-name has-%s-font-size">%s</span>
                     </a>
                 </div>',
                 esc_url($pdf['url']),
                 esc_url($pdf['thumbnail']),
                 esc_attr($pdf['title']),
+                $style,
+                esc_attr($font_size),
                 esc_html($pdf['title'])
             );
         }
