@@ -10,13 +10,23 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+require_once plugin_dir_path(__FILE__) . 'includes/class-pdf-gallery-settings.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-pdf-rest-api.php';
+
 class PDFGalleryBlock {
     private $upload_dir;
     private $pdf_dir = 'pdf-gallery';
     private $thumbnail_dir = 'pdf-thumbnails';
+    private $pdf_rest_api;
 
     public function __construct() {
         $this->upload_dir = wp_upload_dir();
+        $this->pdf_rest_api = new PDFRestAPI();
+        
+        // Initialize settings
+        if (is_admin()) {
+            new PDFGallerySettings();
+        }
         
         // Create necessary directories
         wp_mkdir_p($this->upload_dir['basedir'] . '/' . $this->pdf_dir);
@@ -157,7 +167,11 @@ class PDFGalleryBlock {
                     $imagick->destroy();
                 }
             } catch (ImagickException $e) {
-                // If thumbnail generation fails, return a default PDF icon
+                // Try PDFRest API if Imagick fails
+                if ($this->pdf_rest_api->generate_thumbnail($pdf_path, $thumbnail_path)) {
+                    return $thumbnail_url;
+                }
+                // If both methods fail, return default PDF icon
                 return plugins_url('assets/pdf-icon.png', __FILE__);
             }
         }
