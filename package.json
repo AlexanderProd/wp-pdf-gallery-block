@@ -1,0 +1,15 @@
+{
+  "name": "wp-pdf-gallery-block",
+  "version": "1.0.0",
+  "description": "Adds a block to display PDF files in a grid",
+  "main": "index.js",
+  "author": "Alexander Hörl",
+  "license": "MIT",
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^30.7.0"
+  }
+}
