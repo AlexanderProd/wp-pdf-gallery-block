@@ -2,6 +2,8 @@ const { registerBlockType } = wp.blocks;
 const { useEffect, useState } = wp.element;
 const { TextControl, PanelBody, RangeControl, SelectControl } = wp.components;
 const { InspectorControls, useBlockProps } = wp.blockEditor;
+const { __, sprintf } = wp.i18n;
+const { format: dateFormat } = wp.date;
 
 registerBlockType("pdf-gallery/main", {
   title: "PDF Gallery",
@@ -41,22 +43,117 @@ registerBlockType("pdf-gallery/main", {
       type: "string",
       default: "asc",
     },
+    groupBy: {
+      type: "string",
+      default: "none",
+    },
   },
 
   edit: function (props) {
     const [pdfs, setPdfs] = useState([]);
     const { attributes, setAttributes } = props;
-    const blockProps = useBlockProps({
-      className: `pdf-gallery-grid columns-${attributes.columns}`,
-    });
+    const blockProps = useBlockProps();
 
     useEffect(() => {
       fetch(
-        `/wp-json/pdf-gallery/v1/pdfs?tag=${attributes.tag}&sort_by=${attributes.sortBy}&sort_direction=${attributes.sortDirection}`
+        `/wp-json/pdf-gallery/v1/pdfs?tag=${attributes.tag}&sort_by=${attributes.sortBy}&sort_direction=${attributes.sortDirection}&group_by=${attributes.groupBy}`
       )
         .then((response) => response.json())
         .then((data) => setPdfs(data));
-    }, [attributes.tag, attributes.sortBy, attributes.sortDirection]);
+    }, [
+      attributes.tag,
+      attributes.sortBy,
+      attributes.sortDirection,
+      attributes.groupBy,
+    ]);
+
+    const renderGrid = (pdfList) => (
+      <div className={`pdf-gallery-grid columns-${attributes.columns}`}>
+        {pdfList.map((pdf) => (
+          <div key={pdf.name} className="pdf-item">
+            <a href={pdf.url} target="_blank">
+              <img
+                src={pdf.thumbnail}
+                alt={pdf.title}
+                style={{
+                  objectFit: attributes.imageFit,
+                  width: attributes.imageWidth
+                    ? `${attributes.imageWidth}px`
+                    : "100%",
+                  height: attributes.imageHeight
+                    ? `${attributes.imageHeight}px`
+                    : "auto",
+                }}
+              />
+              <span className={`pdf-name has-${attributes.fontSize}-font-size`}>
+                {pdf.title}
+              </span>
+            </a>
+          </div>
+        ))}
+      </div>
+    );
+
+    const renderContent = () => {
+      if (attributes.groupBy === "none") {
+        return renderGrid(pdfs);
+      }
+
+      // Group PDFs
+      const groupedPdfs = {};
+      pdfs.forEach((pdf) => {
+        const date = new Date(pdf.date * 1000);
+        let groupKey, groupLabel;
+
+        switch (attributes.groupBy) {
+          case "week":
+            groupKey = `${date.getFullYear()}-${getWeekNumber(date)}`;
+            groupLabel = wp.i18n.sprintf(
+              /* translators: %1$s is the week number, %2$s is the year */
+              wp.i18n.__("Week %1$s, %2$s", "pdf-gallery"),
+              getWeekNumber(date),
+              date.getFullYear()
+            );
+            break;
+          case "month":
+            groupKey = `${date.getFullYear()}-${date.getMonth()}`;
+            // Using WordPress's date format settings
+            groupLabel = wp.date.format(wp.i18n.__("F Y", "pdf-gallery"), date);
+            break;
+          case "year":
+            groupKey = `${date.getFullYear()}`;
+            groupLabel = date.getFullYear().toString();
+            break;
+        }
+
+        if (!groupedPdfs[groupKey]) {
+          groupedPdfs[groupKey] = {
+            label: groupLabel,
+            pdfs: [],
+          };
+        }
+        groupedPdfs[groupKey].pdfs.push(pdf);
+      });
+
+      // Sort groups by key in reverse order
+      return Object.entries(groupedPdfs)
+        .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
+        .map(([key, group]) => (
+          <details key={key} className="pdf-gallery-group" open>
+            <summary className="pdf-gallery-group-header">
+              {group.label}
+            </summary>
+            {renderGrid(group.pdfs)}
+          </details>
+        ));
+    };
+
+    // Helper function to get week number
+    const getWeekNumber = (date) => {
+      const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+      const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+      return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    };
 
     return (
       <>
@@ -129,34 +226,20 @@ registerBlockType("pdf-gallery/main", {
               ]}
               onChange={(sortDirection) => setAttributes({ sortDirection })}
             />
+            <SelectControl
+              label="Group By"
+              value={attributes.groupBy}
+              options={[
+                { label: "None", value: "none" },
+                { label: "Week", value: "week" },
+                { label: "Month", value: "month" },
+                { label: "Year", value: "year" },
+              ]}
+              onChange={(groupBy) => setAttributes({ groupBy })}
+            />
           </PanelBody>
         </InspectorControls>
-        <div {...blockProps}>
-          {pdfs.map((pdf) => (
-            <div key={pdf.name} className="pdf-item">
-              <a href={pdf.url} target="_blank">
-                <img
-                  src={pdf.thumbnail}
-                  alt={pdf.title}
-                  style={{
-                    objectFit: attributes.imageFit,
-                    width: attributes.imageWidth
-                      ? `${attributes.imageWidth}px`
-                      : "100%",
-                    height: attributes.imageHeight
-                      ? `${attributes.imageHeight}px`
-                      : "auto",
-                  }}
-                />
-                <span
-                  className={`pdf-name has-${attributes.fontSize}-font-size`}
-                >
-                  {pdf.title}
-                </span>
-              </a>
-            </div>
-          ))}
-        </div>
+        <div {...blockProps}>{renderContent()}</div>
       </>
     );
   },

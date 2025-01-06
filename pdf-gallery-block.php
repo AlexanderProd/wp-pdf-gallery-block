@@ -67,6 +67,11 @@ class PDFGalleryBlock {
                     'type' => 'string',
                     'default' => 'asc',
                 ),
+                'group_by' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'default' => 'none',
+                ),
             ),
         ));
     }
@@ -107,6 +112,8 @@ class PDFGalleryBlock {
         foreach ($media_pdfs as $pdf) {
             $filename = basename(get_attached_file($pdf->ID));
             $description = $pdf->post_content;
+            $file_path = get_attached_file($pdf->ID);
+            $file_time = file_exists($file_path) ? filectime($file_path) : time();
             
             // Check if tag exists in filename or description
             if (empty($tag) || 
@@ -118,8 +125,17 @@ class PDFGalleryBlock {
                     'name' => $filename,
                     'url' => wp_get_attachment_url($pdf->ID),
                     'thumbnail' => $thumbnail,
-                    'title' => get_the_title($pdf->ID)
+                    'title' => get_the_title($pdf->ID),
+                    'date' => $file_time // Add creation date
                 );
+            }
+        }
+
+        // Add dates for custom directory PDFs
+        foreach ($pdfs as $key => $pdf) {
+            if (!isset($pdf['date'])) {
+                $file_path = str_replace($this->upload_dir['baseurl'], $this->upload_dir['basedir'], $pdf['url']);
+                $pdfs[$key]['date'] = file_exists($file_path) ? filectime($file_path) : time();
             }
         }
 
@@ -128,9 +144,7 @@ class PDFGalleryBlock {
             $modifier = $sort_direction === 'desc' ? -1 : 1;
             
             if ($sort_by === 'date') {
-                $time_a = filectime(get_attached_file(attachment_url_to_postid($a['url'])));
-                $time_b = filectime(get_attached_file(attachment_url_to_postid($b['url'])));
-                return ($time_a - $time_b) * $modifier;
+                return ($a['date'] - $b['date']) * $modifier;
             } else { // filename
                 return strcmp($a['name'], $b['name']) * $modifier;
             }
@@ -177,12 +191,75 @@ class PDFGalleryBlock {
         $font_size = isset($attributes['fontSize']) ? $attributes['fontSize'] : 'normal';
         $image_width = isset($attributes['imageWidth']) ? $attributes['imageWidth'] : 0;
         $image_height = isset($attributes['imageHeight']) ? $attributes['imageHeight'] : 200;
+        $group_by = isset($attributes['groupBy']) ? $attributes['groupBy'] : 'none';
         
-        $output = sprintf(
-            '<div class="pdf-gallery-grid columns-%d">',
-            esc_attr($columns)
-        );
+        $output = '';
+        
+        if ($group_by === 'none') {
+            $output = $this->render_grid($pdfs, $attributes);
+        } else {
+            // Group PDFs
+            $grouped_pdfs = array();
+            foreach ($pdfs as $pdf) {
+                $file_time = filectime(get_attached_file(attachment_url_to_postid($pdf['url'])));
+                
+                switch ($group_by) {
+                    case 'week':
+                        $group_key = date('Y-W', $file_time);
+                        $group_label = sprintf(
+                            /* translators: %1$s is the week number, %2$s is the year */
+                            __('Week %1$s, %2$s', 'pdf-gallery'),
+                            date('W', $file_time),
+                            date('Y', $file_time)
+                        );
+                        break;
+                    case 'month':
+                        $group_key = date('Y-m', $file_time);
+                        $group_label = date('F Y', $file_time);
+                        break;
+                    case 'year':
+                        $group_key = date('Y', $file_time);
+                        $group_label = date('Y', $file_time);
+                        break;
+                }
+                
+                if (!isset($grouped_pdfs[$group_key])) {
+                    $grouped_pdfs[$group_key] = array(
+                        'label' => $group_label,
+                        'pdfs' => array()
+                    );
+                }
+                $grouped_pdfs[$group_key]['pdfs'][] = $pdf;
+            }
+            
+            // Sort groups by key in reverse order (newest first)
+            krsort($grouped_pdfs);
+            
+            // Render grouped content
+            foreach ($grouped_pdfs as $group) {
+                $output .= sprintf(
+                    '<details class="pdf-gallery-group" open>
+                        <summary class="pdf-gallery-group-header">%s</summary>
+                        %s
+                    </details>',
+                    esc_html($group['label']),
+                    $this->render_grid($group['pdfs'], $attributes)
+                );
+            }
+        }
+        
+        return $output;
+    }
 
+    private function render_grid($pdfs, $attributes) {
+        $columns = isset($attributes['columns']) ? $attributes['columns'] : 3;
+        $image_fit = isset($attributes['imageFit']) ? $attributes['imageFit'] : 'cover';
+        $font_size = isset($attributes['fontSize']) ? $attributes['fontSize'] : 'normal';
+        $image_width = isset($attributes['imageWidth']) ? $attributes['imageWidth'] : 0;
+        $image_height = isset($attributes['imageHeight']) ? $attributes['imageHeight'] : 200;
+        
+        $output = sprintf('<div class="pdf-gallery-grid columns-%d">', esc_attr($columns));
+        
         foreach ($pdfs as $pdf) {
             $style = sprintf(
                 'object-fit: %s; %s %s',
@@ -206,7 +283,7 @@ class PDFGalleryBlock {
                 esc_html($pdf['title'])
             );
         }
-
+        
         $output .= '</div>';
         return $output;
     }
