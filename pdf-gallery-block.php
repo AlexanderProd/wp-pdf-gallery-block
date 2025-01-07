@@ -94,7 +94,8 @@ class PDFGalleryBlock {
                     'name' => $filename,
                     'url' => $this->upload_dir['baseurl'] . '/' . $this->pdf_dir . '/' . $filename,
                     'thumbnail' => $thumbnail,
-                    'title' => $filename
+                    'title' => $filename,
+                    'date' => filectime($file)
                 );
             }
         }
@@ -113,7 +114,7 @@ class PDFGalleryBlock {
             $filename = basename(get_attached_file($pdf->ID));
             $description = $pdf->post_content;
             $file_path = get_attached_file($pdf->ID);
-            $file_time = file_exists($file_path) ? filectime($file_path) : time();
+            $file_time = strtotime($pdf->post_date);
             
             // Check if tag exists in filename or description
             if (empty($tag) || 
@@ -126,7 +127,7 @@ class PDFGalleryBlock {
                     'url' => wp_get_attachment_url($pdf->ID),
                     'thumbnail' => $thumbnail,
                     'title' => get_the_title($pdf->ID),
-                    'date' => $file_time // Add creation date
+                    'date' => $file_time
                 );
             }
         }
@@ -201,7 +202,7 @@ class PDFGalleryBlock {
             // Group PDFs
             $grouped_pdfs = array();
             foreach ($pdfs as $pdf) {
-                $file_time = filectime(get_attached_file(attachment_url_to_postid($pdf['url'])));
+                $file_time = $pdf['date'];
                 
                 switch ($group_by) {
                     case 'week':
@@ -209,17 +210,17 @@ class PDFGalleryBlock {
                         $group_label = sprintf(
                             /* translators: %1$s is the week number, %2$s is the year */
                             __('Week %1$s, %2$s', 'pdf-gallery'),
-                            date('W', $file_time),
-                            date('Y', $file_time)
+                            date_i18n('W', $file_time),
+                            date_i18n('Y', $file_time)
                         );
                         break;
                     case 'month':
                         $group_key = date('Y-m', $file_time);
-                        $group_label = date('F Y', $file_time);
+                        $group_label = date_i18n('F Y', $file_time);
                         break;
                     case 'year':
                         $group_key = date('Y', $file_time);
-                        $group_label = date('Y', $file_time);
+                        $group_label = date_i18n('Y', $file_time);
                         break;
                 }
                 
