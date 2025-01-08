@@ -47,6 +47,10 @@ registerBlockType("pdf-gallery/main", {
       type: "string",
       default: "none",
     },
+    accordionsOpen: {
+      type: "boolean",
+      default: true,
+    },
   },
 
   edit: function (props) {
@@ -139,7 +143,11 @@ registerBlockType("pdf-gallery/main", {
       return Object.entries(groupedPdfs)
         .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
         .map(([key, group]) => (
-          <details key={key} className="pdf-gallery-group" open>
+          <details
+            key={key}
+            className="pdf-gallery-group"
+            open={attributes.accordionsOpen}
+          >
             <summary className="pdf-gallery-group-header">
               {group.label}
             </summary>
@@ -237,6 +245,19 @@ registerBlockType("pdf-gallery/main", {
               ]}
               onChange={(groupBy) => setAttributes({ groupBy })}
             />
+            {attributes.groupBy !== "none" && (
+              <SelectControl
+                label="Accordions Default State"
+                value={attributes.accordionsOpen ? "true" : "false"}
+                options={[
+                  { label: "Open", value: "true" },
+                  { label: "Closed", value: "false" },
+                ]}
+                onChange={(value) =>
+                  setAttributes({ accordionsOpen: value === "true" })
+                }
+              />
+            )}
           </PanelBody>
         </InspectorControls>
         <div {...blockProps}>{renderContent()}</div>

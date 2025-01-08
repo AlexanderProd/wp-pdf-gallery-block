@@ -197,6 +197,7 @@ class PDFGalleryBlock {
         $image_width = isset($attributes['imageWidth']) ? $attributes['imageWidth'] : 0;
         $image_height = isset($attributes['imageHeight']) ? $attributes['imageHeight'] : 200;
         $group_by = isset($attributes['groupBy']) ? $attributes['groupBy'] : 'none';
+        $accordions_open = isset($attributes['accordionsOpen']) ? $attributes['accordionsOpen'] : true;
         
         $output = '';
         
@@ -243,10 +244,11 @@ class PDFGalleryBlock {
             // Render grouped content
             foreach ($grouped_pdfs as $group) {
                 $output .= sprintf(
-                    '<details class="pdf-gallery-group" open>
+                    '<details class="pdf-gallery-group"%s>
                         <summary class="pdf-gallery-group-header">%s</summary>
                         %s
                     </details>',
+                    $accordions_open ? ' open' : '',
                     esc_html($group['label']),
                     $this->render_grid($group['pdfs'], $attributes)
                 );
