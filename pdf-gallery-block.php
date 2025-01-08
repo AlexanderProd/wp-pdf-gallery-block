@@ -10,6 +10,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+require_once plugin_dir_path(__FILE__) . 'includes/utils.php';
+
 class PDFGalleryBlock {
     private $upload_dir;
     private $pdf_dir = 'pdf-gallery';
@@ -90,12 +92,13 @@ class PDFGalleryBlock {
             $filename = basename($file);
             if (empty($tag) || stripos($filename, $tag) !== false) {
                 $thumbnail = $this->generate_thumbnail($file, $filename);
+                $file_date = PDFGalleryUtils::extract_date_from_filename($filename);
                 $pdfs[] = array(
                     'name' => $filename,
                     'url' => $this->upload_dir['baseurl'] . '/' . $this->pdf_dir . '/' . $filename,
                     'thumbnail' => $thumbnail,
                     'title' => $filename,
-                    'date' => filectime($file)
+                    'date' => $file_date ? $file_date : filectime($file)
                 );
             }
         }
@@ -114,7 +117,8 @@ class PDFGalleryBlock {
             $filename = basename(get_attached_file($pdf->ID));
             $description = $pdf->post_content;
             $file_path = get_attached_file($pdf->ID);
-            $file_time = strtotime($pdf->post_date);
+            $file_date = PDFGalleryUtils::extract_date_from_filename($filename);
+            $file_time = $file_date ? $file_date : strtotime($pdf->post_date);
             
             // Check if tag exists in filename or description
             if (empty($tag) || 
